@@ -1,6 +1,7 @@
 body {
   margin: 0 !important;
   background: #f7f7f7 !important;
+  word-break: break-word;
 }
 
 h1 {
