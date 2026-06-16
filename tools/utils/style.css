@@ -40,6 +40,15 @@ p {
 p:last-child {
   margin-bottom: 0;
 }
+ol,
+ul,
+li {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: 0px;
+  color: rgba(75, 75, 85, 1);
+}
 strong {
   font-size: 14px;
   line-height: 22px;
