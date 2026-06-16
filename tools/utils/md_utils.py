@@ -1,4 +1,5 @@
 import re
+import os
 import markdown
 from bs4 import BeautifulSoup
 
@@ -6,133 +7,101 @@ CHINESE_CHAR_PATTERN = re.compile(r'[\u4e00-\u9fff]')
 # 正则表达式组合：平假名 + 片假名 + 日文汉字
 JAPANESE_CHAR_PATTERN = re.compile(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]')
 
+_CSS_PATH = os.path.join(os.path.dirname(__file__), "style.css")
+
+
+def _load_css() -> str:
+    with open(_CSS_PATH, "r", encoding="utf-8") as f:
+        return f"<style>\n{f.read()}\n</style>"
+
+
+_DATA_SOURCE_PATTERN = re.compile(r'^数据来源', re.MULTILINE)
+
+
+def _extract_data_source(soup: BeautifulSoup) -> str:
+    """
+    从 soup 顶层节点中找出以「数据来源」开头的 <p>，将其从树中移除，
+    返回这些节点的 HTML 字符串（用于独立渲染）。
+    """
+    matched = []
+    for node in list(soup.children):
+        if getattr(node, "name", None) == "p" and _DATA_SOURCE_PATTERN.match(node.get_text(strip=True)):
+            matched.append(str(node))
+            node.decompose()
+    return "".join(matched)
+
+
+def _detect_split_tag(top_nodes: list) -> str:
+    """
+    自动检测用于分段的标签层级：
+    有 h1 → 用 h1；无 h1 有 h2 → 用 h2；无 h2 有 h3 → 用 h3；否则用 p。
+    """
+    names = {getattr(n, "name", None) for n in top_nodes}
+    for tag in ("h1", "h2", "h3"):
+        if tag in names:
+            return tag
+    return "p"
+
+
+def _is_footer_section(nodes: list, split_tag: str) -> bool:
+    """
+    判断一组节点是否为尾注：
+    不含比 split_tag 低一级的标题 / ul / ol / table，且纯文本 < 200 字符。
+    """
+    lower_headings = {"h1": ("h2", "h3"), "h2": ("h3",), "h3": (), "p": ()}.get(split_tag, ())
+    for node in nodes:
+        if getattr(node, "name", None) in (*lower_headings, "ul", "ol", "table"):
+            return False
+    text = "".join(n.get_text() for n in nodes).strip()
+    return len(text) < 200
+
+
+def _wrap_sections(soup: BeautifulSoup) -> str:
+    """
+    自动按最高可用标题层级（h1 > h2 > h3 > p）将顶层节点分组，
+    包裹为带 class 的 <section>：
+      - section-preface : 第一个分隔标签之前的内容
+      - section-body    : 每个分隔标签及其下属内容
+      - section-footer  : 最后一组若判定为尾注则改为 footer
+    """
+    top_nodes = list(soup.children)
+    split_tag = _detect_split_tag(top_nodes)
+
+    groups: list[dict] = []
+    current: list = []
+
+    for node in top_nodes:
+        if getattr(node, "name", None) == split_tag:
+            if current:
+                groups.append({"nodes": current})
+            current = [node]
+        else:
+            current.append(node)
+
+    if current:
+        groups.append({"nodes": current})
+
+    # 标注每组的 section 类型
+    for i, group in enumerate(groups):
+        first = group["nodes"][0]
+        is_split_group = getattr(first, "name", None) == split_tag
+
+        if i == 0 and not is_split_group:
+            group["cls"] = "preface"
+        elif i == len(groups) - 1 and is_split_group and _is_footer_section(group["nodes"][1:], split_tag):
+            group["cls"] = "footer"
+        else:
+            group["cls"] = "body" if is_split_group else "preface"
+
+    html_parts = []
+    for group in groups:
+        inner = "".join(str(n) for n in group["nodes"])
+        html_parts.append(f'<section class="section-{group["cls"]}">\n{inner}\n</section>')
+
+    return "\n".join(html_parts)
+
 
 class MarkdownUtils:
-    CSS_GLOBAL_STYLE = """
-    <style>
-        /* Reset */
-        body, h1, h2, h3, h4, h5, h6, p, blockquote, pre, code, table, th, td, ul, ol {
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 16px;
-            line-height: 1.75;
-            color: #2c2c2c;
-            background-color: #f9f9f9;
-            padding: 1em;
-            word-break: break-word;
-        }
-
-        /* Headings */
-        h1 { font-size: 2em; margin: 1em 0 0.5em; font-weight: 600; }
-        h2 { font-size: 1.75em; margin: 1em 0 0.5em; font-weight: 600; }
-        h3 { font-size: 1.5em; margin: 1em 0 0.5em; font-weight: 600; }
-        h4, h5, h6 { font-size: 1.25em; margin: 1em 0 0.5em; font-weight: 500; }
-
-        /* Paragraphs & Lists */
-        p, ul, ol {
-            margin: 0.8em 0;
-        }
-
-        ul, ol {
-            padding-left: 2em;
-        }
-
-        blockquote {
-            border-left: 4px solid #d0d0d0;
-            padding-left: 1em;
-            margin: 1em 0;
-            color: #555;
-            background-color: #f0f0f0;
-        }
-
-        /* Tables */
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 1em 0;
-        }
-
-        th, td {
-            border: 1px solid #ccc;
-            padding: 0.5em;
-            text-align: left;
-        }
-
-        th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-
-        /* Images */
-        img {
-          display: block;
-          max-width: 90vw;
-          max-height: 80vh;
-          height: auto;
-          margin: 1em auto;
-          border-radius: 4px;
-          clear: both;
-        }
-        
-        /* 当屏幕宽度小于 1080px：取消 block 和居中，让图片靠左 */
-        @media (min-width: 1081px) {
-            img {
-                margin-left: 0 !important;
-                margin-right: auto !important;
-              }
-        }
-
-
-        /* Code & Pre */
-        pre {
-            background-color: #f4f4f4;
-            padding: 1em;
-            overflow: auto;
-            border-radius: 6px;
-            font-size: 14px;
-            line-height: 1.5;
-            margin: 1em 0;
-        }
-
-        code {
-            background-color: #f2f2f2;
-            padding: 0.2em 0.4em;
-            border-radius: 4px;
-            font-family: Consolas, monospace;
-            font-size: 14px;
-        }
-
-        /* Links */
-        a {
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            body {
-                font-size: 15px;
-                padding: 0.8em;
-            }
-
-            pre {
-                font-size: 13px;
-            }
-
-            h1 { font-size: 1.6em; }
-            h2 { font-size: 1.4em; }
-            h3 { font-size: 1.25em; }
-        }
-    </style>
-    """
 
     @classmethod
     def convert_markdown_to_html(cls, md_text: str, html_header: str, prompt_word: str) -> str:
@@ -143,43 +112,89 @@ class MarkdownUtils:
         for li in soup.find_all("li"):
             text = li.get_text("\n", strip=True)
 
-            # 1. 先按换行拆分
             lines = []
             for part in text.splitlines():
                 part = part.strip()
                 if not part:
                     continue
-                # 2. 再按行内的 '- ' 拆分
                 subparts = [p.strip() for p in re.split(r'\s*-\s+', part) if p.strip()]
                 lines.extend(subparts)
 
-            # 清空 <li> 并插入新的 <br> 分行
             li.clear()
             for i, line in enumerate(lines):
                 li.append(line)
                 if i < len(lines) - 1:
                     li.append(soup.new_tag("br"))
 
-        global_css = cls.CSS_GLOBAL_STYLE
+        # 把段落里的 @用户名 包成 <span class="mention">
+        _MENTION_RE = re.compile(r'(@[\w\u4e00-\u9fff]+)')
+        for p in soup.find_all("p"):
+            new_contents = []
+            for child in list(p.children):
+                if isinstance(child, str) and _MENTION_RE.search(child):
+                    parts = _MENTION_RE.split(child)
+                    for part in parts:
+                        if _MENTION_RE.fullmatch(part):
+                            span = soup.new_tag("span", attrs={"class": "mention"})
+                            span.string = part
+                            new_contents.append(span)
+                        else:
+                            new_contents.append(part)
+                else:
+                    new_contents.append(child)
+            p.clear()
+            for item in new_contents:
+                p.append(item)
 
-        print(soup)
-        return f""" 
-        <!DOCTYPE html>
-        <html lang="zh">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no,viewport-fit=cover">
-            <title>{html_header}</title>
-            {global_css}
-        </head>
-        <body>
-            {body_html}
-            <div style="font-size:15px;color:#f80;">
-                {prompt_word}
-            </div>
-        </body>
-        </html>
-        """
+        # 给每个 table 包一层可滚动的 wrapper
+        for table in soup.find_all("table"):
+            wrapper = soup.new_tag("div", attrs={"class": "table-wrapper"})
+            table.wrap(wrapper)
+
+        data_source_html = _extract_data_source(soup)
+        sectioned_html = _wrap_sections(soup)
+        global_css = _load_css()
+        prompt_html = f'<div class="prompt-word">{prompt_word}</div>' if prompt_word else ""
+        data_source_block = (
+            f'<div class="data-source">{data_source_html}</div>'
+            if data_source_html else ""
+        )
+
+        return f"""<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no,viewport-fit=cover">
+    <title>{html_header}</title>
+    {global_css}
+</head>
+<body>
+    <div class="container">
+        {sectioned_html}
+        {data_source_block}
+    </div>
+    {prompt_html}
+    <script>
+    (function () {{
+        // 图片横竖版自适应
+        function applyImageClass(img) {{
+            if (img.naturalWidth >= img.naturalHeight) {{
+                img.classList.add('img-landscape');
+            }} else {{
+                img.classList.add('img-portrait');
+            }}
+        }}
+        document.querySelectorAll('img').forEach(function (img) {{
+            if (img.complete && img.naturalWidth > 0) {{
+                applyImageClass(img);
+            }} else {{
+                img.addEventListener('load', function () {{ applyImageClass(img); }});
+            }}
+        }});
+    }})();
+    </script>
+</body>
+</html>"""
 
     @classmethod
     def get_html_url(html_text: str):
