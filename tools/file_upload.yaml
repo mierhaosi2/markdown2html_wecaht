@@ -1,0 +1,38 @@
+identity:
+  name: file_upload
+  author: mierhaosi3
+  label:
+    en_US: HTML File Upload
+    zh_Hans: HTML文件上传
+    pt_BR: HTML File Upload
+description:
+  human:
+    en_US: 上传HTML文件并直接返回文件数据
+    zh_Hans: 上传HTML文件并直接返回文件数据
+    pt_BR: Upload HTML file and return file data directly
+  llm: 上传HTML文件并直接返回文件数据
+parameters:
+  - name: html_file
+    type: file
+    required: true
+    label:
+      en_US: HTML File
+      zh_Hans: HTML文件
+    human_description:
+      en_US: HTML file to upload
+      zh_Hans: 要上传的HTML文件
+    form: form
+  - name: output_filename
+    type: string
+    required: false
+    label:
+      en_US: Filename of the output file
+      zh_Hans: 输出文件名
+    human_description:
+      en_US: Filename of the output file
+      zh_Hans: 输出文件名
+    form: llm
+extra:
+  python:
+    source: tools/file_upload.py
+

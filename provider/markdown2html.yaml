@@ -1,0 +1,18 @@
+identity:
+  author: mierhaosi3
+  name: markdown2html
+  label:
+    en_US: markdown2html
+    zh_Hans: markdown2html
+    pt_BR: markdown2html
+  description:
+    en_US: 这个工具用于将markdown文件或纯Html文件转化为dify的URL
+    zh_Hans: 这个工具用于将markdown文件或纯Html文件转化为dify的URL
+    pt_BR: 这个工具用于将markdown文件或纯Html文件转化为dify的URL
+  icon: icon.svg
+tools:
+  - tools/markdown2html.yaml
+  - tools/file_upload.yaml
+extra:
+  python:
+    source: provider/markdown2html.py

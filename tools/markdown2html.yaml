@@ -1,0 +1,47 @@
+identity:
+  name: markdown2html
+  author: mierhaosi3
+  label:
+    en_US: markdown2html
+    zh_Hans: markdown2html
+    pt_BR: markdown2html
+description:
+  human:
+    en_US: 这个工具用于将markdown文件或纯Html文件转化为dify的URL
+    zh_Hans: 这个工具用于将markdown文件或纯Html文件转化为dify的URL
+    pt_BR: 这个工具用于将markdown文件或纯Html文件转化为dify的URL
+  llm: 这个工具用于将markdown文件或纯Html文件转化为dify的URL
+parameters:
+  - name: md_text
+    type: string
+    required: true
+    label:
+      en_US: Markdown text
+      zh_Hans: Markdown格式文本
+    human_description:
+      en_US: Markdown text
+      zh_Hans: Markdown格式文本
+    form: llm
+  - name: output_filename
+    type: string
+    required: false
+    label:
+      en_US: Filename of the output file
+      zh_Hans: 输出文件名
+    human_description:
+      en_US: Filename of the output file
+      zh_Hans: 输出文件名
+    form: llm
+  - name: prompt_word
+    type: string
+    required: true
+    label:
+      en_US: Please enter the bottom prompt
+      zh_Hans: 请输入底部提示语
+    human_description:
+      en_US: Please enter the bottom prompt
+      zh_Hans: 请输入底部提示语
+    form: llm
+extra:
+  python:
+    source: tools/markdown2html.py
