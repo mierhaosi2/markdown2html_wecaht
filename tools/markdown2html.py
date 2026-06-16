@@ -19,7 +19,19 @@ class Markdown2htmlTool(Tool):
         md_text = get_md_text(tool_parameters, is_strip_wrapper=True)
         html_header = tool_parameters.get("output_filename")
         prompt_word = tool_parameters.get("prompt_word")
-        html_text = md_text 
+        username = (tool_parameters.get("username") or "").strip()
+        intro_text = (tool_parameters.get("intro_text") or "").strip()
+
+        # 拼接头部前言到 md_text 最前面
+        preface_parts = []
+        if username:
+            preface_parts.append(f"@{username}")
+        if intro_text:
+            preface_parts.append(intro_text)
+        if preface_parts:
+            md_text = "\n".join(preface_parts) + "\n\n" + md_text
+
+        html_text = md_text
         is_html = "<!doctype html" in html_text.lower() or "<html" in html_text.lower()
         try:
             html_str = html_text if is_html else MarkdownUtils.convert_markdown_to_html(

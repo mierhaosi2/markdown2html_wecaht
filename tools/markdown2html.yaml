@@ -22,6 +22,26 @@ parameters:
       en_US: Markdown text
       zh_Hans: Markdown格式文本
     form: llm
+  - name: username
+    type: string
+    required: false
+    label:
+      en_US: Username
+      zh_Hans: 用户名
+    human_description:
+      en_US: Username shown at the top of the article, e.g. 小张
+      zh_Hans: 显示在文章顶部的用户名，如 小张
+    form: llm
+  - name: intro_text
+    type: string
+    required: false
+    label:
+      en_US: Intro text
+      zh_Hans: 引导语
+    human_description:
+      en_US: Introductory paragraph shown below the username
+      zh_Hans: 用户名下方的引导段落
+    form: llm
   - name: output_filename
     type: string
     required: false
