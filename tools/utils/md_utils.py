@@ -67,8 +67,22 @@ def _wrap_sections(soup: BeautifulSoup) -> str:
     top_nodes = list(soup.children)
     split_tag = _detect_split_tag(top_nodes)
 
-    # 无标题时整体包成一个 section-body，不拆分
+    # 无标题时：含 @mention 的首段单独作 preface，其余整体包成 section-body
     if split_tag == "p":
+        first = top_nodes[0] if top_nodes else None
+        has_mention = (
+            first is not None
+            and getattr(first,"name",None) == "p"
+            and first.find(class_="mention") is not None
+        )
+
+        if has_mention and len(top_nodes) > 1:
+            preface_html = str(first)
+            body_html = "".join(str(n) for n in top_nodes[1:])
+            return (
+                f'<section class="section-preface">\n{preface_html}\n</section>\n'
+                f'<section class="section-body">\n{body_html}\n</section>'
+            )
         inner = "".join(str(n) for n in top_nodes)
         return f'<section class="section-body">\n{inner}\n</section>'
 
