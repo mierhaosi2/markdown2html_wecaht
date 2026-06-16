@@ -34,7 +34,7 @@ def _extract_data_source(soup: BeautifulSoup) -> str:
 def _detect_split_tag(top_nodes: list) -> str:
     """
     自动检测用于分段的标签层级：
-    有 h1 → 用 h1；无 h1 有 h2 → 用 h2；无 h2 有 h3 → 用 h3；否则用 p。
+    有 h1 → 用 h1；无 h1 有 h2 → 用 h2；无 h2 有 h3 → 用 h3；否则返回 p（不分段）。
     """
     names = {getattr(n, "name", None) for n in top_nodes}
     for tag in ("h1", "h2", "h3"):
@@ -58,14 +58,20 @@ def _is_footer_section(nodes: list, split_tag: str) -> bool:
 
 def _wrap_sections(soup: BeautifulSoup) -> str:
     """
-    自动按最高可用标题层级（h1 > h2 > h3 > p）将顶层节点分组，
-    包裹为带 class 的 <section>：
+    自动按最高可用标题层级（h1 > h2 > h3）将顶层节点分组，
+    无标题时整体包一个 section-body，不按 p 拆分。
       - section-preface : 第一个分隔标签之前的内容
       - section-body    : 每个分隔标签及其下属内容
       - section-footer  : 最后一组若判定为尾注则改为 footer
     """
     top_nodes = list(soup.children)
     split_tag = _detect_split_tag(top_nodes)
+
+    # 无标题时整体包成一个 section-body，不拆分
+    if split_tag == "p":
+        inner = "".join(str(n) for n in top_nodes)
+        return f'<section class="section-body">\n{inner}\n</section>'
+
 
     groups: list[dict] = []
     current: list = []
@@ -105,7 +111,7 @@ class MarkdownUtils:
 
     @classmethod
     def convert_markdown_to_html(cls, md_text: str, html_header: str, prompt_word: str) -> str:
-        body_html = markdown.markdown(md_text, extensions=["extra", "sane_lists"])
+        body_html = markdown.markdown(md_text, extensions=["extra", "sane_lists", "nl2br"])
         soup = BeautifulSoup(body_html, "html.parser")
 
         # 遍历所有 <li>，处理换行和 '- '

@@ -54,7 +54,9 @@ blockquote {
   color: rgba(125, 125, 135, 1);
   margin: 0;
 }
-
+code {
+  word-break: break-all;
+}
 table {
   border-collapse: collapse;
   width: 100%;
