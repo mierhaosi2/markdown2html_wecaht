@@ -128,7 +128,7 @@ class MarkdownUtils:
         body_html = markdown.markdown(md_text, extensions=["extra", "sane_lists", "nl2br"])
         soup = BeautifulSoup(body_html, "html.parser")
 
-        # 遍历所有 <li>，处理换行和 '- '
+        # 遍历所有 <li>，处理换行和 '- '，不插入 <br>
         for li in soup.find_all("li"):
             text = li.get_text("\n", strip=True)
 
@@ -141,10 +141,7 @@ class MarkdownUtils:
                 lines.extend(subparts)
 
             li.clear()
-            for i, line in enumerate(lines):
-                li.append(line)
-                if i < len(lines) - 1:
-                    li.append(soup.new_tag("br"))
+            li.append(" ".join(lines))
 
         # 把段落里的 @用户名 包成 <span class="mention">
         _MENTION_RE = re.compile(r'(@[\w\u4e00-\u9fff]+)')
