@@ -218,14 +218,70 @@ class MarkdownUtils:
         var lightImg = document.getElementById('lightbox-img');
         var closeBtn = document.getElementById('lightbox-close');
 
+        // pinch-to-zoom state
+        var _scale = 1, _lastScale = 1;
+        var _originX = 0, _originY = 0;
+        var _initDist = 0;
+
+        function _dist(t) {{
+            var dx = t[0].clientX - t[1].clientX;
+            var dy = t[0].clientY - t[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }}
+        function _midpoint(t) {{
+            return {{
+                x: (t[0].clientX + t[1].clientX) / 2,
+                y: (t[0].clientY + t[1].clientY) / 2,
+            }};
+        }}
+        function _applyTransform() {{
+            lightImg.style.transform = 'scale(' + _scale + ')';
+            lightImg.style.transformOrigin = _originX + 'px ' + _originY + 'px';
+        }}
+        function _resetTransform() {{
+            _scale = 1; _lastScale = 1;
+            _originX = 0; _originY = 0;
+            lightImg.style.transform = '';
+            lightImg.style.transformOrigin = '';
+        }}
+
+        lightImg.addEventListener('touchstart', function (e) {{
+            if (e.touches.length === 2) {{
+                e.preventDefault();
+                _initDist = _dist(e.touches);
+                var mid = _midpoint(e.touches);
+                var rect = lightImg.getBoundingClientRect();
+                _originX = mid.x - rect.left;
+                _originY = mid.y - rect.top;
+            }}
+        }}, {{ passive: false }});
+
+        lightImg.addEventListener('touchmove', function (e) {{
+            if (e.touches.length === 2) {{
+                e.preventDefault();
+                var newDist = _dist(e.touches);
+                _scale = Math.min(5, Math.max(1, _lastScale * (newDist / _initDist)));
+                _applyTransform();
+            }}
+        }}, {{ passive: false }});
+
+        lightImg.addEventListener('touchend', function (e) {{
+            if (e.touches.length < 2) {{
+                _lastScale = _scale;
+                if (_scale <= 1.05) _resetTransform();
+            }}
+        }});
+
         function openLightbox(src, alt) {{
             lightImg.src = src;
             lightImg.alt = alt || '';
+            _resetTransform();
             overlay.classList.add('active');
         }}
         function closeLightbox() {{
             overlay.classList.remove('active');
             lightImg.src = '';
+            _resetTransform();
         }}
 
         document.querySelectorAll('img').forEach(function (img) {{
