@@ -220,8 +220,12 @@ class MarkdownUtils:
 
         // pinch-to-zoom state
         var _scale = 1, _lastScale = 1;
-        var _originX = 0, _originY = 0;
+        var _tx = 0, _ty = 0;           // current translate
+        var _lastTx = 0, _lastTy = 0;   // translate at gesture start
         var _initDist = 0;
+        var _initMid = {{ x: 0, y: 0 }};
+        var _panStartX = 0, _panStartY = 0;
+        var _isPinching = false;
 
         function _dist(t) {{
             var dx = t[0].clientX - t[1].clientX;
@@ -235,24 +239,29 @@ class MarkdownUtils:
             }};
         }}
         function _applyTransform() {{
-            lightImg.style.transform = 'scale(' + _scale + ')';
-            lightImg.style.transformOrigin = _originX + 'px ' + _originY + 'px';
+            lightImg.style.transform =
+                'translate(' + _tx + 'px, ' + _ty + 'px) scale(' + _scale + ')';
         }}
         function _resetTransform() {{
             _scale = 1; _lastScale = 1;
-            _originX = 0; _originY = 0;
+            _tx = 0; _ty = 0; _lastTx = 0; _lastTy = 0;
             lightImg.style.transform = '';
-            lightImg.style.transformOrigin = '';
+            lightImg.style.transformOrigin = '50% 50%';
         }}
 
         lightImg.addEventListener('touchstart', function (e) {{
             if (e.touches.length === 2) {{
                 e.preventDefault();
+                _isPinching = true;
                 _initDist = _dist(e.touches);
-                var mid = _midpoint(e.touches);
-                var rect = lightImg.getBoundingClientRect();
-                _originX = mid.x - rect.left;
-                _originY = mid.y - rect.top;
+                _initMid = _midpoint(e.touches);
+                _lastScale = _scale;
+                _lastTx = _tx; _lastTy = _ty;
+            }} else if (e.touches.length === 1 && _scale > 1) {{
+                e.preventDefault();
+                _isPinching = false;
+                _panStartX = e.touches[0].clientX - _tx;
+                _panStartY = e.touches[0].clientY - _ty;
             }}
         }}, {{ passive: false }});
 
@@ -260,15 +269,34 @@ class MarkdownUtils:
             if (e.touches.length === 2) {{
                 e.preventDefault();
                 var newDist = _dist(e.touches);
-                _scale = Math.min(5, Math.max(1, _lastScale * (newDist / _initDist)));
+                var newMid = _midpoint(e.touches);
+                var ratio = newDist / _initDist;
+                _scale = Math.min(5, Math.max(1, _lastScale * ratio));
+                // 以捏合中心为基准平移
+                _tx = _lastTx + (newMid.x - _initMid.x);
+                _ty = _lastTy + (newMid.y - _initMid.y);
+                _applyTransform();
+            }} else if (e.touches.length === 1 && _scale > 1 && !_isPinching) {{
+                e.preventDefault();
+                _tx = e.touches[0].clientX - _panStartX;
+                _ty = e.touches[0].clientY - _panStartY;
                 _applyTransform();
             }}
         }}, {{ passive: false }});
 
         lightImg.addEventListener('touchend', function (e) {{
-            if (e.touches.length < 2) {{
+            if (e.touches.length === 0) {{
+                _isPinching = false;
                 _lastScale = _scale;
+                _lastTx = _tx; _lastTy = _ty;
                 if (_scale <= 1.05) _resetTransform();
+            }} else if (e.touches.length === 1) {{
+                // 从双指切换到单指：重设 pan 起点
+                _isPinching = false;
+                _lastScale = _scale;
+                _lastTx = _tx; _lastTy = _ty;
+                _panStartX = e.touches[0].clientX - _tx;
+                _panStartY = e.touches[0].clientY - _ty;
             }}
         }});
 
