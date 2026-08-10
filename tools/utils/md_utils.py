@@ -181,7 +181,7 @@ class MarkdownUtils:
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no,viewport-fit=cover">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
     <title>{html_header}</title>
     {global_css}
 </head>
@@ -191,6 +191,10 @@ class MarkdownUtils:
         {data_source_block}
     </div>
     {prompt_html}
+    <div class="lightbox-overlay" id="lightbox">
+        <span class="lightbox-close" id="lightbox-close">&#x2715;</span>
+        <img id="lightbox-img" src="" alt="">
+    </div>
     <script>
     (function () {{
         // 图片横竖版自适应
@@ -207,6 +211,35 @@ class MarkdownUtils:
             }} else {{
                 img.addEventListener('load', function () {{ applyImageClass(img); }});
             }}
+        }});
+
+        // Lightbox
+        var overlay = document.getElementById('lightbox');
+        var lightImg = document.getElementById('lightbox-img');
+        var closeBtn = document.getElementById('lightbox-close');
+
+        function openLightbox(src, alt) {{
+            lightImg.src = src;
+            lightImg.alt = alt || '';
+            overlay.classList.add('active');
+        }}
+        function closeLightbox() {{
+            overlay.classList.remove('active');
+            lightImg.src = '';
+        }}
+
+        document.querySelectorAll('img').forEach(function (img) {{
+            img.addEventListener('click', function () {{
+                openLightbox(img.src, img.alt);
+            }});
+        }});
+
+        overlay.addEventListener('click', function (e) {{
+            if (e.target === overlay) closeLightbox();
+        }});
+        closeBtn.addEventListener('click', closeLightbox);
+        document.addEventListener('keydown', function (e) {{
+            if (e.key === 'Escape') closeLightbox();
         }});
     }})();
     </script>

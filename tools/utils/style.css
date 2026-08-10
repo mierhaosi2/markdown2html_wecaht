@@ -119,11 +119,48 @@ a:hover {
 img.img-landscape {
   width: 100%;
   height: auto;
+  cursor: zoom-in;
 }
 img.img-portrait {
   max-height: 300px;
   width: auto;
   height: auto;
+  cursor: zoom-in;
+}
+
+/* Lightbox overlay */
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+.lightbox-overlay.active {
+  display: flex;
+}
+.lightbox-overlay img {
+  max-width: 92vw;
+  max-height: 92vh;
+  width: auto;
+  height: auto;
+  border-radius: 4px;
+  cursor: default;
+  object-fit: contain;
+}
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.8;
 }
 .container {
   margin: 8px 20px 32px 20px;
