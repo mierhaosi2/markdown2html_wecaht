@@ -122,11 +122,18 @@ img.img-landscape {
   cursor: zoom-in;
 }
 img.img-portrait {
-  width: 100%;
+  max-height: 300px;
+  width: auto;
   height: auto;
   cursor: zoom-in;
 }
-
+@media (max-width: 768px) {
+  img.img-portrait {
+    width: 100%;
+    height: auto;
+    cursor: zoom-in;
+  }
+}
 /* Lightbox overlay */
 .lightbox-overlay {
   display: none;
