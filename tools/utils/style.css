@@ -122,8 +122,7 @@ img.img-landscape {
   cursor: zoom-in;
 }
 img.img-portrait {
-  max-height: 300px;
-  width: auto;
+  width: 100%;
   height: auto;
   cursor: zoom-in;
 }
