@@ -129,7 +129,8 @@ img.img-portrait {
 }
 @media (max-width: 768px) {
   img.img-portrait {
-    width: 100%;
+    display: block;
+    width: auto;
     height: auto;
     margin: 0 auto;
     cursor: zoom-in;
