@@ -131,6 +131,7 @@ img.img-portrait {
   img.img-portrait {
     width: 100%;
     height: auto;
+    margin: 0 auto;
     cursor: zoom-in;
   }
 }
